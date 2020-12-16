@@ -16,7 +16,6 @@ def nest_mng( func ):
     def inner( type, id ):
         global nest_cnt
         relation_line = "  " * nest_cnt + " +- " + type + " : " + id 
-
         if id in gotten_resources or nest_cnt > nest_max:
             if output_all_relation:
                 relation_line = relation_line + " *"
@@ -47,7 +46,7 @@ def nest_mng( func ):
 @nest_mng
 def dig_relation( type, id ):
     if not id or len( id ) == 0:
-        list = client.list_discovered_resources( resourceType=type, includeDeletedResources=False )
+        list = client.list_discovered_resources( resourceType=type )
         for r in list['resourceIdentifiers']:
             dig_relation( r['resourceType'], r['resourceId'] )
         return
@@ -60,9 +59,9 @@ def dig_relation( type, id ):
 
     enable_resource = False
     for item in resource['configurationItems']:
-        if item[ 'configurationItemStatus' ] == 'ResourceDeleted' or item[ 'configurationItemStatus' ] == 'OK' :
+        if item[ 'configurationItemStatus' ] == 'ResourceDiscovered' or item[ 'configurationItemStatus' ] == 'OK' :
+            enable_resource = True
             for rel in item['relationships']:
-                enable_resource = True
                 t = rel['resourceType']
                 i = rel['resourceId']
                 dig_relation( t, i )
@@ -79,7 +78,7 @@ if __name__ == '__main__':
     env = os.environ
     JST = timezone(timedelta(hours=+9), 'JST')
     now_str = datetime.now( JST ).strftime("%Y%m%d_%H%M%S")
-    
+
     if "RELATION_NEST_MAX" in env:
         nest_max = int( env["RELATION_NEST_MAX"] )
         
@@ -99,6 +98,9 @@ if __name__ == '__main__':
     relationships.reverse()
     for line in relationships:
         print( line )
+
+    if len( resources ) == 0:
+        exit( 0 )
 
     with open( out_file, 'w' ) as out:
         for id in sorted( resources ):
